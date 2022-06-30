@@ -12,8 +12,12 @@ Este SC posee las siguientes funcionalidades:
 - Freeze metadata
 - set BASE URI
 - tokenURI (override)
-- setAproveAll (override)
-- baseURI (override)
+- isApprovedForAll (override)
+- _baseURI (override)
+- contractURI
+- setContractURI
+- totalAmount
+
 
 ## blauprint_collab.sol 
 
@@ -25,5 +29,8 @@ Este SC posee las siguientes funcionalidades:
 - Freeze metadata
 - set BASE URI
 - tokenURI (override)
-- setAproveAll (override)
-- baseURI (override)
+- isApprovedForAll (override)
+- _baseURI (override)
+- contractURI
+- setContractURI
+- totalAmount
