@@ -1,6 +1,6 @@
 // contracts/Blauprint_collabs.sol
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -11,11 +11,13 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 contract Blauprint is ERC721, ERC721Enumerable, Ownable {
     using Strings for uint256;
     using Counters for Counters.Counter;
-    Counters.Counter private _tokenIds;
+    Counters.Counter private _recortes;
+    Counters.Counter private _cuadros;
 
     string baseURI;
     string public baseExtension = ".json";
     string private _contractURI;
+    uint256 public cuadros = 1000;
     
     mapping(address => bool) public isAdmin;
 
@@ -32,13 +34,23 @@ contract Blauprint is ERC721, ERC721Enumerable, Ownable {
         _contractURI = _initialContractURI;
     }
 
-    function mint()
+    function mintCuadros()
         public onlyAdmin
     {
-            _tokenIds.increment();
-            uint256 mintToken = _tokenIds.current();
+        require(_cuadros.current() + 1 < cuadros, "El limite de cuadros ha sido alcanzado" );
+            _cuadros.increment();
+            uint256 mintToken = _cuadros.current();
             _safeMint(msg.sender, mintToken);
             emit Mint(mintToken, msg.sender);
+    }
+
+    function mintRecortes()
+        public onlyAdmin
+    {
+            uint256 mintToken = _recortes.current() + 1000;
+            _safeMint(msg.sender, mintToken);
+            emit Mint(mintToken, msg.sender);
+            _recortes.increment();
     }
 
     function addAdmin(address _add) public onlyAdmin {
@@ -50,7 +62,7 @@ contract Blauprint is ERC721, ERC721Enumerable, Ownable {
     }
 
     function TotalMinted() public view returns (uint){
-        return _tokenIds.current();
+        return _cuadros.current() + _recortes.current();
     }
 
     function contractURI() public view returns (string memory) {
