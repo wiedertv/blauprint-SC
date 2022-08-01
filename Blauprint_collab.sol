@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 
-contract blauprint1155 is ERC1155, AccessControl, Ownable, ERC1155Burnable, ERC1155Supply, ERC2981 {
+contract Blauprint1155 is ERC1155, AccessControl, Ownable, ERC1155Burnable, ERC1155Supply, ERC2981 {
     bytes32 public constant MODERATOR_ROLE = keccak256("MODERATOR_ROLE");
     uint256 public collabQuantityLimit;
     uint256 public collabTokenLimit;
