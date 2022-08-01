@@ -1,157 +1,112 @@
-// contracts/Blauprint_collabs.sol
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+pragma solidity ^0.8.4;
+
+import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "@openzeppelin/contracts/token/common/ERC2981.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
+import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 
-
-contract BlauprintCollab is ERC721, ERC721Enumerable, Ownable {
+contract blauprint1155 is ERC1155, AccessControl, Ownable, ERC1155Burnable, ERC1155Supply, ERC2981 {
+    bytes32 public constant MODERATOR_ROLE = keccak256("MODERATOR_ROLE");
+    uint256 public collabQuantityLimit;
+    uint256 public collabTokenLimit;
     using Strings for uint256;
-    using Counters for Counters.Counter;
-    Counters.Counter private _tokenIds;
+    string public contractURI;
+    string public _uri;
+    string public name;
+    string public symbol;
 
-    string baseURI;
-    string public baseExtension = ".json";
-    string private _contractURI;
+     constructor(string memory initialContractURI, 
+     string memory _name, 
+     string memory _symbol, 
+     string memory uri_, 
+     uint96 _royaltyFeesInBips, 
+     uint256 _collabQuantityLimit, 
+     uint256 _collabTokenLimit 
+     )
+        ERC1155(_uri)
+    {
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(MODERATOR_ROLE, msg.sender);
+        setRoyaltyInfo(msg.sender, _royaltyFeesInBips);
+        _uri = uri_; 
+        symbol= _symbol;
+        name= _name;
+        collabQuantityLimit = _collabQuantityLimit;
+        collabTokenLimit = _collabTokenLimit;
+        contractURI = initialContractURI;
+    }
+
+    function setURI(string memory newuri) public onlyRole(MODERATOR_ROLE) {
+        _uri= newuri;
+        _setURI(newuri);
+    }
+
+    function create(uint256 amount, uint256 _tokenId) public onlyRole(MODERATOR_ROLE)
+    {
+        require(totalSupply(_tokenId) + amount <= collabQuantityLimit, "No se pueden crear mas");
+        require( _tokenId > 0 , "El token no puede ser 0");
+        require( _tokenId <= collabTokenLimit, "Este numero de token no esta permitido");
+        _mint(msg.sender, _tokenId, amount, '');
+    }
+
+    function setContractURI(string memory newContractURI) public onlyRole(MODERATOR_ROLE) {
+        contractURI = newContractURI;
+    }
+
+    function airdrop( uint256 _quantity, address _to, uint256 _token) public onlyRole(MODERATOR_ROLE) {
+        require(totalSupply(_token) + _quantity <= collabQuantityLimit, "No se pueden crear mas");
+        require( _token > 0 , "El token no puede ser 0");
+        require( _token <= collabTokenLimit, "Este numero de token no esta permitido");
+            _mint(_to, _token, _quantity, "");
+    }
     
-    mapping(address => bool) public isAdmin;
-
-    modifier onlyAdmin() {
-        require(isAdmin[msg.sender] || msg.sender == owner());
-        _;
-    }
-
-    constructor(
-        string memory name,
-        string memory symbol,
-        string memory _initialContractURI
-    ) ERC721(name, symbol) { 
-        _contractURI = _initialContractURI;
-    }
-
-    function mint()
-        public onlyAdmin
-    {
-            _tokenIds.increment();
-            uint256 mintToken = _tokenIds.current();
-            _safeMint(msg.sender, mintToken);
-            emit Mint(mintToken, msg.sender);
-    }
-
-    function addAdmin(address _add) public onlyAdmin {
-        isAdmin[_add] = true;
-    }
-
-    function removeAdmin(address _remove) public onlyOwner {
-        isAdmin[_remove] = false;
-    }
-
-    function TotalMinted() public view returns (uint){
-        return _tokenIds.current();
-    }
-
-    function contractURI() public view returns (string memory) {
-        return _contractURI;
-    }
-
-    function setBaseURI(string memory newBaseUri)
-        public
-        onlyOwner
-        returns (string memory)
-    {
-        require(
-            bytes(newBaseUri).length > 0,
-            "Cannot set base address with an invalid 'baseUrl'."
-        );
-
-        baseURI = newBaseUri;
-        return baseURI;
-    }
-
-    function _baseURI() internal view override returns (string memory) {
-        return baseURI;
-    }
-
-    function tokenURI(uint256 tokenId)
-        public
-        view
-        virtual
-        override
-        returns (string memory)
-    {
-        require(
-            _exists(tokenId),
-            "ERC721Metadata: URI query for nonexistent token"
-        );
-
-        return
-            bytes(baseURI).length > 0
-                ? string(
-                    abi.encodePacked(baseURI, tokenId.toString(), baseExtension)
-                )
-                : "";
-    }
-
-    function setContractURI(string memory _newContractURI) public onlyOwner {
-        _contractURI = _newContractURI;
-    }
-
-    function freezeTokenURI(uint256 id) public onlyOwner {
-        emit PermanentURI(baseURI, id);
-    }
-
-    function freezeTokenURIBatch(uint256[] memory ids) public onlyOwner {
-        for (uint256 i; i < ids.length; i++) {
-            emit PermanentURI(baseURI, ids[i]);
+    function batchAirdrop( uint256[] memory _quantity, address[] memory _to, uint256 _token) public onlyRole(MODERATOR_ROLE) {
+        require( _quantity.length == _to.length, 'Quantity array must have exact lenght than _to array');
+        require( _token > 0 , "El token no puede ser 0");
+        require( _token <= collabTokenLimit, "Este numero de token no esta permitido");
+        for (uint256 i = 0; i < _quantity.length ; i++){
+            uint256 amount = _quantity[i];
+            require(totalSupply(_token) + amount <= collabQuantityLimit, "No se pueden crear mas");
+            _mint(_to[i], _token, _quantity[i], "");
         }
     }
 
-    /**
-     * @dev Emitted when `tokenMetaData` is ready to be frozen
-     */
-    event PermanentURI(string _value, uint256 indexed _id);
-
-    /**
-     * @dev Emitted when a token is minted
-     */
-    event Mint(uint256 tokenId, address _owner);
-    /**
-     * Override isApprovedForAll to auto-approve OS's proxy contract
-     */
-    function isApprovedForAll(address _owner, address _operator)
-        public
-        view
-        override
-        returns (bool isOperator)
-    {
-        // if OpenSea's ERC721 Proxy Address is detected, auto-return true
-        if (_operator == address(0x58807baD0B376efc12F5AD86aAc70E78ed67deaE)) {
-            return true;
-        }
-
-        // otherwise, use the default ERC721.isApprovedForAll()
-        return ERC721.isApprovedForAll(_owner, _operator);
+    function setRoyaltyInfo(address _receiver, uint96 _royaltyFeesInBips) public onlyRole(MODERATOR_ROLE) {
+        _setDefaultRoyalty(_receiver, _royaltyFeesInBips);
     }
 
-     // The following functions are overrides required by Solidity.
+    function setTokenRoyalty(uint256 tokenId , address receiver, uint96 feeNumerato) public onlyRole(MODERATOR_ROLE){
+        _setTokenRoyalty(tokenId, receiver, feeNumerato);
+    }
 
-    function _beforeTokenTransfer(address from, address to, uint256 tokenId)
+    function resetTokenRoyalty(uint256 tokenId)public onlyRole(MODERATOR_ROLE) {
+        _resetTokenRoyalty(tokenId);
+    }
+
+    // The following functions are overrides required by Solidity.
+
+    function _beforeTokenTransfer(address operator, address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data)
         internal
-        override(ERC721, ERC721Enumerable)
+        override(ERC1155, ERC1155Supply)
     {
-        super._beforeTokenTransfer(from, to, tokenId);
+        super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
+    }
+
+    function uri(uint256 tokenId) public view override returns (string memory)  
+    {
+        return bytes(_uri).length > 0 ? string(abi.encodePacked(_uri, tokenId.toString(), ".json")) : "";
     }
 
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC721, ERC721Enumerable)
+        override(ERC1155, AccessControl, ERC2981)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
     }
-
 }
